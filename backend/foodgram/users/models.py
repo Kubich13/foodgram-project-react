@@ -16,6 +16,8 @@ class User(AbstractUser):
 
     class Meta:
         ordering = ['id']
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
     def __str__(self):
         return self.username
@@ -37,9 +39,12 @@ class Subscribe(models.Model):
         return f'{self.user.username} подписан на {self.author.username}'
 
     class Meta:
+        ordering = ['-id']
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'author'],
                 name='unique_subscribe'
             )
         ]
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'

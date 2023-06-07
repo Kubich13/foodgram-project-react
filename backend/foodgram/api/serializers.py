@@ -1,5 +1,6 @@
 from django.contrib.auth.hashers import check_password
 from django.core.validators import MinValueValidator
+from django.db import transaction
 from djoser.serializers import (PasswordSerializer, UserCreateSerializer,
                                 UserSerializer)
 from drf_extra_fields.fields import Base64ImageField
@@ -39,11 +40,11 @@ class SetPasswordSerializer(PasswordSerializer):
         user = self.context.get('request').user
         if data['new_password'] == data['current_password']:
             raise serializers.ValidationError({
-                "new_password": "Пароли не должны совпадать"})
+                'new_password': 'Пароли не должны совпадать'})
         check_current = check_password(data['current_password'], user.password)
         if check_current is False:
             raise serializers.ValidationError({
-                "current_password": "Введен неверный пароль"})
+                'current_password': 'Введен неверный пароль'})
         return data
 
 
@@ -186,8 +187,8 @@ class WriteIngredientRecipeSerializer(serializers.ModelSerializer):
         validators=(
             MinValueValidator(
                 limit_value=1,
-                message=(f'Количество ингредиента не может быть '
-                         f'меньше {1}')
+                message=('Количество ингредиента не может быть '
+                         'меньше 1')
             ),
         )
     )
@@ -208,8 +209,8 @@ class RecipeEditSerializer(serializers.ModelSerializer):
         validators=(
             MinValueValidator(
                 limit_value=1,
-                message=(f'Время приготовления не может быть '
-                         f'меньше {1} минуты')
+                message=('Время приготовления не может быть '
+                         'меньше минуты')
             ),
         )
     )
@@ -256,8 +257,8 @@ class RecipeEditSerializer(serializers.ModelSerializer):
             )
         return data
 
-    @staticmethod
-    def create_ingredients(ingredients, recipe):
+    @transaction.atomic
+    def create_ingredients(self, ingredients, recipe):
         ingredients = [
             RecipeIngredient(
                 recipe=recipe,
@@ -267,34 +268,28 @@ class RecipeEditSerializer(serializers.ModelSerializer):
         ]
         RecipeIngredient.objects.bulk_create(ingredients)
 
+    @transaction.atomic
     def create(self, validated_data):
-        image = validated_data.pop('image')
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
-        recipe = Recipe.objects.create(image=image, **validated_data)
+        recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
-        self.create_ingredients(ingredients, recipe)
+        self.create_ingredients(recipe=recipe,
+                                ingredients=ingredients)
         return recipe
 
-    def update(self, recipe, validated_data):
-        tags = validated_data.get('tags')
-        ingredients = validated_data.get('ingredients')
-        recipe.name = validated_data.get('name', recipe.name)
-        recipe.image = validated_data.get('image', recipe.image)
-        recipe.text = validated_data.get('text', recipe.text)
-        recipe.cooking_time = validated_data.get('cooking_time',
-                                                 recipe.cooking_time)
-
-        if tags:
-            recipe.tags.clear()
-            recipe.tags.set(tags)
-
-        if ingredients:
-            recipe.ingredients.clear()
-            self.create_ingredients(ingredients, recipe)
-
-        recipe.save()
-        return recipe
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        tags = validated_data.pop('tags')
+        ingredients = validated_data.pop('ingredients')
+        instance = super().update(instance, validated_data)
+        instance.tags.clear()
+        instance.tags.set(tags)
+        instance.ingredients.clear()
+        self.create_ingredients(recipe=instance,
+                                ingredients=ingredients)
+        instance.save()
+        return instance
 
 
 class CartSerializer(serializers.ModelSerializer):

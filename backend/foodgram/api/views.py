@@ -1,5 +1,4 @@
 from django.db.models import Sum
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
@@ -14,7 +13,7 @@ from .permissions import AuthorOrReadOnly
 from .serializers import (CartSerializer, FavoriteSerializer,
                           IngredientSerializer, RecipeEditSerializer,
                           RecipeGetSerializer, RecipeSerializer, TagSerializer)
-
+from .utils import make_list_ingredients
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                             ShoppingCart, Tag)
 
@@ -84,20 +83,11 @@ class RecipeViewSet(ModelViewSet):
         error = 'У вас нет данного рецепта в списке'
         return self.add_or_del_object(ShoppingCart, pk, CartSerializer, error)
 
-    @action(methods=["get"], detail=False)
+    @action(methods=['get'], detail=False)
     def download_shopping_cart(self, request):
         ingredients = RecipeIngredient.objects.filter(
             recipe__recipe_shopping_cart__user=request.user
         ).values(
             'ingredient__name', 'ingredient__measurement_unit'
         ).annotate(ingredient_amount=Sum('amount'))
-        shopping_list = ['Список покупок:\n']
-        for ingredient in ingredients:
-            name = ingredient['ingredient__name']
-            unit = ingredient['ingredient__measurement_unit']
-            amount = ingredient['ingredient_amount']
-            shopping_list.append(f'\n{name} - {amount}, {unit}')
-        response = HttpResponse(shopping_list, content_type='text/plain')
-        response['Content-Disposition'] = (
-            'attachment; filename="shopping_cart.txt"')
-        return response
+        return make_list_ingredients(self, request, ingredients)

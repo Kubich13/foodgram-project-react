@@ -3,6 +3,10 @@ from django.contrib import admin
 from . import models
 
 
+class RecipeIngredientInline(admin.TabularInline):
+    model = models.RecipeIngredient
+
+
 @admin.register(models.Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
     list_display = ('pk', 'name', 'measurement_unit')
@@ -17,6 +21,12 @@ class TagAdmin(admin.ModelAdmin):
     empty_value_display = '-пусто-'
 
 
+@admin.register(models.RecipeIngredient)
+class RecipeIngredientAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'recipe', 'ingredient', 'amount')
+    list_editable = ('recipe', 'ingredient', 'amount')
+
+
 @admin.register(models.Recipe)
 class RecipeAdmin(admin.ModelAdmin):
     list_display = ('pk', 'name', 'author', 'in_favorites',
@@ -27,16 +37,12 @@ class RecipeAdmin(admin.ModelAdmin):
     )
     readonly_fields = ('in_favorites',)
     empty_value_display = '-пусто-'
+    search_fields = ('name', 'author', 'tags')
+    inlines = (RecipeIngredientInline,)
 
     @admin.display(description='Избранное')
     def in_favorites(self, obj):
         return obj.favorite_recipe.count()
-
-
-@admin.register(models.RecipeIngredient)
-class RecipeIngredientAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'recipe', 'ingredient', 'amount')
-    list_editable = ('recipe', 'ingredient', 'amount')
 
 
 @admin.register(models.Favorite)
