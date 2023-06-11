@@ -7,7 +7,6 @@ services:
     env_file:
       - ./.env
   web:
-      # image: kubich13/foodgram_backend:latest
       build: ../backend
       restart: always
       volumes:
@@ -18,7 +17,6 @@ services:
       env_file:
         - ./.env
   frontend:
-    # image: kubich13/foodgram_frontend:latest
     build: ../frontend
     volumes:
       - ../frontend/:/app/result_build/

@@ -4,7 +4,9 @@ from . import models
 
 
 class RecipeIngredientInline(admin.TabularInline):
-    model = models.RecipeIngredient
+    model = models.Recipe.ingredients.through
+    min_num = 1
+    extra = 0
 
 
 @admin.register(models.Ingredient)

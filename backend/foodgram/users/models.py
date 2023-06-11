@@ -10,6 +10,12 @@ class User(AbstractUser):
     last_name = models.CharField(
         max_length=150,
     )
+    username = models.CharField(
+        max_length=150,
+        unique=True,
+        blank=False,
+        null=False,
+    )
     password = models.CharField(
         max_length=150,
     )

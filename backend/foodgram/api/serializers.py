@@ -197,10 +197,10 @@ class WriteIngredientRecipeSerializer(serializers.ModelSerializer):
         model = RecipeIngredient
         fields = ('id', 'amount')
 
-
 class RecipeEditSerializer(serializers.ModelSerializer):
     ingredients = WriteIngredientRecipeSerializer(
         many=True,
+        write_only=True
     )
     tags = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Tag.objects.all())
@@ -219,6 +219,7 @@ class RecipeEditSerializer(serializers.ModelSerializer):
         model = Recipe
         fields = ('ingredients', 'tags', 'image', 'name', 'text',
                   'cooking_time')
+        read_only_fields = ('author',)
 
     def validate(self, data):
         ingredients = data['ingredients']
@@ -228,68 +229,61 @@ class RecipeEditSerializer(serializers.ModelSerializer):
         for ingredient in ingredients:
             ingredient_id = ingredient['id']
             if ingredient_id in ingredients_list:
-                raise serializers.ValidationError(
-                    {'ingredients': ingredient_message}
-                )
+                raise serializers.ValidationError(ingredient_message)
             ingredients_list.append(ingredient_id)
             amount = ingredient['amount']
             if not int(amount) >= 1:
-                raise serializers.ValidationError(
-                    {'amount': message}
-                )
+                raise serializers.ValidationError(message)
 
         if not data['tags']:
             raise serializers.ValidationError(
-                {'tags': 'Выберите хотя бы один тэг.'}
+                'Выберите хотя бы один тэг.'
             )
         tag_list = []
         for tag in data['tags']:
             if tag in tag_list:
                 raise serializers.ValidationError(
-                    {'tags': 'Тэги должны быть уникальными.'}
+                    'Тэги должны быть уникальными.'
                 )
             tag_list.append(tag)
 
         cook_message = 'Время приготовления должно быть больше или равно 1'
         if not int(data['cooking_time']):
-            raise serializers.ValidationError(
-                {'cooking_time': cook_message}
-            )
+            raise serializers.ValidationError(cook_message)
         return data
 
     @transaction.atomic
-    def create_ingredients(self, ingredients, recipe):
+    def create_ingredients(self, ingredients, tags, model):
         ingredients = [
             RecipeIngredient(
-                recipe=recipe,
+                recipe=model,
                 ingredient=ingredient['id'],
                 amount=ingredient['amount']
             ) for ingredient in ingredients
         ]
-        RecipeIngredient.objects.bulk_create(ingredients)
+        RecipeIngredient.objects.bulk_create(
+            ingredients,
+            ignore_conflicts=True)
+        model.tags.set(tags)
 
     @transaction.atomic
     def create(self, validated_data):
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
         recipe = Recipe.objects.create(**validated_data)
-        recipe.tags.set(tags)
-        self.create_ingredients(recipe=recipe,
-                                ingredients=ingredients)
+        self.create_ingredients(ingredients, tags, recipe)
         return recipe
 
     @transaction.atomic
-    def update(self, instance, validated_data):
+    def update(self, recipe, validated_data):
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
-        instance = super().update(instance, validated_data)
-        instance.tags.clear()
-        instance.tags.set(tags)
-        instance.ingredients.clear()
-        self.create_ingredients(recipe=instance,
-                                ingredients=ingredients)
-        instance.save()
-        return instance
+        recipe = super().update(recipe, validated_data)
+        recipe.tags.clear()
+        recipe.ingredients.clear()
+        self.create_ingredients(ingredients, tags, recipe)
+        recipe.save()
+        return recipe
 
 
 class CartSerializer(serializers.ModelSerializer):
