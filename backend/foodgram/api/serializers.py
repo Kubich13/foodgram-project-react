@@ -197,6 +197,7 @@ class WriteIngredientRecipeSerializer(serializers.ModelSerializer):
         model = RecipeIngredient
         fields = ('id', 'amount')
 
+
 class RecipeEditSerializer(serializers.ModelSerializer):
     ingredients = WriteIngredientRecipeSerializer(
         many=True,
