@@ -40,6 +40,7 @@ class RecipeAdmin(admin.ModelAdmin):
     readonly_fields = ('in_favorites',)
     empty_value_display = '-пусто-'
     search_fields = ('name', 'author', 'tags')
+    list_filter = ('name', 'author', 'tags')
     inlines = (RecipeIngredientInline,)
 
     @admin.display(description='Избранное')

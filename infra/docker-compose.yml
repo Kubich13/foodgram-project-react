@@ -7,6 +7,7 @@ services:
     env_file:
       - ./.env
   web:
+      # image: kubich13/foodgram_backend:latest используется на сервере
       build: ../backend
       restart: always
       volumes:
